@@ -40,9 +40,6 @@ class Model:
     constructor call, or using the square bracket __setitem__ syntax.
     """
 
-    __hash__ = None
-    __str__ = None
-
     def __init__(self, **kw):
         self.__dict__ = kw
         if not "_parameter_type" in self.__dict__.keys():
@@ -82,7 +79,9 @@ class Model:
         else:
             solver = self.solver
 
-        def binded_model(t, x): return self.model(x, t, params)
+        def binded_model(t, x):
+            return self.model(x, t, params)
+
         self.solution = solver(binded_model, *args, **kwargs)
         return self.solution
 
@@ -142,42 +141,8 @@ class Model:
         return {key: casting_func(self.__dict__[key]) for key in self.parvec}
 
     """
-    Methods required for dict ducktyping.
-    Taken from PyDSTool code.
+    Some methods for dict-like interaction
     """
-
-    def _infostr(self, verbose=1, attributeTitle="Model", ignore_underscored=False):
-        # removed offset=0 from arg list
-        if len(self.__dict__) > 0:
-            res = "%s (" % attributeTitle
-            for k, v in self.__dict__.items():
-                if k[0] == "_" and ignore_underscored:
-                    continue
-                if verbose == 0:
-                    # don't resolve any deeper
-                    if hasattr(v, "name"):
-                        name = " " + v.name
-                    else:
-                        name = ""
-                    istr = str(type(v)) + name
-                else:
-                    try:
-                        istr = v._infostr(verbose - 1)  # , offset+2)
-                    except AttributeError:
-                        istr = str(v)
-                res += "\n%s%s = %s," % (" ", k, istr)
-                # was " "*offset
-            # skip last comma
-            res = res[:-1] + "\n)"
-            return res
-        else:
-            return "No %s defined" % attributeTitle
-
-    def __repr__(self):
-        return self._infostr()
-
-    def info(self):
-        print(self._infostr())
 
     def values(self):
         return list(self.__dict__.values())
@@ -203,67 +168,11 @@ class Model:
     def __setitem__(self, k, v):
         self.__dict__.__setitem__(k, v)
 
-    def update(self, d):
-        self.__dict__.update(d)
-
-    def clear(self):
-        self.__dict__.clear()
-
     def get(self, k, d=None):
         return self.__dict__.get(k, d)
 
     def has_key(self, k):
         return k in self.__dict__
 
-    def pop(self, k, d=None):
-        return self.__dict__.pop(k, d)
-
-    def popitem(self):
-        raise NotImplementedError
-
     def __contains__(self, v):
         return self.__dict__.__contains__(v)
-
-    def fromkeys(self, S, v=None):
-        raise NotImplementedError
-
-    def setdefault(self, d):
-        raise NotImplementedError
-
-    def __delitem__(self, k):
-        del self.__dict__[k]
-
-    def copy(self):
-        return copy(self)
-
-    def __cmp__(self, other):
-        return self.__dict__ == other
-
-    def __eq__(self, other):
-        return self.__dict__ == other
-
-    def __ne__(self, other):
-        return self.__dict__ != other
-
-    def __gt__(self, other):
-        return self.__dict__ > other
-
-    def __ge__(self, other):
-        return self.__dict__ >= other
-
-    def __lt__(self, other):
-        return self.__dict__ < other
-
-    def __le__(self, other):
-        return self.__dict__ <= other
-
-    def __len__(self):
-        return len(self.__dict__)
-
-    def __iter__(self):
-        return iter(self.__dict__)
-
-    def __add__(self, other):
-        d = self.__dict__.copy()
-        d.update(other.__dict__)
-        return args(**d)
