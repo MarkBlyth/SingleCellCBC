@@ -1,6 +1,8 @@
 import scipy.integrate
 import inspect
 from copy import copy
+from controller import Controller
+import numpy as np
 
 
 class Model:
@@ -49,10 +51,16 @@ class Model:
         """Simulate the model. Raises the following exceptions:
             AttributeError : self.model does not exist
 
+            AttributeError : openloop=False, meaning a controlled
+            system is required, but no controller has been specified
+
             ValueError : self.model is not a callable function
 
             ValueError : self.model does not take exactly three
             arguments
+
+            TypeError : self.controller is not a valid Controller
+            object
 
             Passes up any exceptions raised by the solver and by
             construct_param_vector.
@@ -63,10 +71,10 @@ class Model:
         # Check model has been defined
         if not "model" in self.__dict__.keys():
             raise AttributeError("No model has been defined")
-        # Check it's a callable function
+        # Check model is a callable function
         if not callable(self.model):
             raise ValueError("Model is not callable function")
-        # Check number of arguments of model is correct
+        # Check model's number of arguments of model is correct
         n_args = len(inspect.signature(self.model).parameters)
         if n_args != 3:
             raise ValueError(
@@ -74,13 +82,40 @@ class Model:
             )
         # Parameter checks are done in the parameter vector construction step
         params = self.construct_param_vector()
+        # Check if we should be controlling the system
+        if (
+            "openloop" in self.__dict__
+            and not self.openloop
+            and not "controller" in self.__dict__
+        ):
+            raise AttributeError(
+                "Closed loop system has been requested, but no controller has been specified"
+            )
+        if (
+            "controller" in self.__dict__
+            and "openloop" in self.__dict__
+            and not self.openloop
+        ):
+            # Ensure we have a valid control object
+            if not isinstance(self.controller, Controller):
+                raise TypeError("Specified controller is not a valid Controller object")
+            # Get controller and bind it to model
+            control = self.controller.get_controller()
+
+            def binded_model(t, x):
+                # Bind params, and add a control action
+                u = control(x, t)
+                x_dot = np.array(self.model(x, t, params))
+                return u.reshape(x_dot.shape) + x_dot
+
+        else:
+            # No control requested, so run unbinded model
+            binded_model = lambda t, x: self.model(x, t, params)
+
         if not "solver" in self.__dict__:
             solver = scipy.integrate.solve_ivp
         else:
             solver = self.solver
-
-        def binded_model(t, x):
-            return self.model(x, t, params)
 
         self.solution = solver(binded_model, *args, **kwargs)
         return self.solution
