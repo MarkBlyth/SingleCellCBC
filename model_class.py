@@ -37,6 +37,18 @@ class Model:
             *args, **kwargs), where func is a function representing a
             system RHS, of signature RHS(t,x).
 
+        controller : Controller object 
+            Controller object for applying a control scheme to the
+            specified model.
+
+        openloop : bool
+            Boolean specifying whether a controller should be used. If
+            true or unspecified, the model is run without a
+            controller, in open loop. If false and a controller is
+            defined, the controller is used instead. An exception is
+            raised if openloop is false and no controller has been
+            specified.
+
     Any parameters defined in parvec must be initialised with a value
     before running the model. All data can be provided either in the
     constructor call, or using the square bracket __setitem__ syntax.
