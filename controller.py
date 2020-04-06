@@ -52,6 +52,11 @@ class Controller:
             Control gains. gain[i] represents the gain applied to the
             i'th state variable. Must be exactly one gain per state
             variable.
+
+    Integral control for PID controllers produces a system that is not
+    suitable for traditional numerical methods, and therefore requires
+    a custom integrator. This should be avoided.
+
     """
 
     def __init__(self, **kw):
