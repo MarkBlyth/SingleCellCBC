@@ -30,7 +30,6 @@ class _PID:
         integral = self.integral_error + 0.5 * (self.last_error + this_error) * dt
         derivative = 0 if dt == 0 else (this_error - self.last_error) / dt
         proportional = this_error
-        print(proportional, integral, derivative)
 
         # Find control action
         control_action = -1 * (
