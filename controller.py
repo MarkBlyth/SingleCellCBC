@@ -107,12 +107,17 @@ class Controller:
             )
 
         # Build control function
-        def control_action(x, t):
-            """Return function for giving the control action at state
-            x, time t.
+        def controlled_RHS(RHS, x, t):
+            """Return function for giving the controlled system RHS,
+            for uncontrolled RHS, state x, time t.
 
-                x : ndarray Vector of floats representing the system
-                    state at the current instant
+                RHS : ndarray
+                    The derivative of the system, evaluated at state
+                    x, time t
+
+                x : ndarray
+                    Vector of floats representing the system state at
+                    the current instant
 
                 t : float Current time
 

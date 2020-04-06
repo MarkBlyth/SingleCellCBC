@@ -116,8 +116,8 @@ class Model:
 
             def binded_model(t, x):
                 # Bind params, and add a control action
-                u = control(x, t)
                 x_dot = np.array(self.model(x, t, params))
+                u = control(x_dot, x, t)
                 return u.reshape(x_dot.shape) + x_dot
 
         else:

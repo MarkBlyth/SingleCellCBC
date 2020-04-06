@@ -13,7 +13,7 @@ class _PID:
         self.C_matrix = np.array(C_matrix)
         self.target = target
 
-    def __call__(self, x, t):
+    def __call__(self, RHS, x, t):
         this_error = np.dot(self.C_matrix, x) - self.target(t)
 
         # If this is the first call to the controller, do nothing
