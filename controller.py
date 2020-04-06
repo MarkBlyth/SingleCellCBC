@@ -132,8 +132,8 @@ class Controller:
                 Raises ValueError if the dimension of the state
                 doesn't correctly correspond to that of the gains
 
-            Returns the control action u(x,t) as found by a state
-            feedback control strategy.
+            Returns the new, controlled RHS of the ODE system, with a
+            full state feedback control strategy applied.
             """
             # Check state dimensions match
             state = np.array(x).reshape((-1, 1))
@@ -142,7 +142,7 @@ class Controller:
                     "State vector, B matrix, and gains must contain the same number of elements"
                 )
             error = state - self._control_target(t)
-            return -B_matrix * np.dot(gains, error)
+            return state - B_matrix * np.dot(gains, error)
 
         return controlled_RHS
 
@@ -209,7 +209,7 @@ class Controller:
                 doesn't correctly correspond to that of the gains
 
             Returns the new, controlled RHS of the ODE system, with a
-            feedback control strategy applied.
+            PD feedback control strategy applied.
             """
             state = np.array(x).reshape((-1, 1))
             if not state.shape == B_matrix.shape:

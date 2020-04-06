@@ -118,7 +118,7 @@ class Model:
                 # Bind params, and add a control action
                 x_dot = np.array(self.model(x, t, params))
                 u = control(x_dot, x, t)
-                return u.reshape(x_dot.shape) + x_dot
+                return u.reshape(x_dot.shape)
 
         else:
             # No control requested, so run unbinded model

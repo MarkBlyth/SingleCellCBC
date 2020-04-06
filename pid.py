@@ -41,4 +41,4 @@ class _PID:
         self.last_error = this_error
         self.integral_error = integral
 
-        return control_action * self.B_matrix
+        return RHS + control_action * self.B_matrix
