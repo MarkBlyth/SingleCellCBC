@@ -1,5 +1,6 @@
 import numpy as np
 from pid import _PID
+import scipy.misc
 
 
 class Controller:
@@ -55,8 +56,13 @@ class Controller:
 
     def __init__(self, **kw):
         self.__dict__ = kw
-        PID_dict = {x: self._PID_controller for x in "P I D PI PD ID PID".split()}
-        self._controller_types = {"state": self._state_feedback_controller, **PID_dict}
+        PID_dict = {x: self._integral_controller for x in "I PI ID PID".split()}
+        PD_dict = {x: self._derivative_controller for x in "P D PD".split()}
+        self._controller_types = {
+            "state": self._state_feedback_controller,
+            **PID_dict,
+            **PD_dict,
+        }
 
     def get_controller(self):
         """Return a controller function.
@@ -138,9 +144,9 @@ class Controller:
             error = state - self._control_target(t)
             return -B_matrix * np.dot(gains, error)
 
-        return control_action
+        return controlled_RHS
 
-    def _PID_controller(self):
+    def _integral_controller(self):
         # Existence and correctness of self.type is checked for in the calling function.
         # Ensure all the gains have been defined
         if "P" in self.type and not "kp" in self.__dict__:
@@ -155,6 +161,74 @@ class Controller:
         ki = 0 if not "I" in self.type else self.ki
         kd = 0 if not "D" in self.type else self.kd
         return _PID(kp, ki, kd, self.B_matrix, self.C_matrix, self._control_target)
+
+    def _derivative_controller(self):
+        # Existence and correctness of B_matrix and self.type is
+        # checked for in the calling function. Ensure all the gains
+        # have been defined
+        if "P" in self.type and not "kp" in self.__dict__:
+            raise AttributeError("No proportional feedback gain set")
+        if "D" in self.type and not "kd" in self.__dict__:
+            raise AttributeError("No derivative feedback gain set")
+        if not "C_matrix" in self.__dict__:
+            raise AttributeError("No C matrix defined")
+        kp = 0 if not "P" in self.type else self.kp
+        kd = 0 if not "D" in self.type else self.kd
+
+        # See if we have the control target derivative
+        # If not, construct it
+        if "derivative" in self.__dict__:
+            derivative = self.target_derivative
+        else:
+            derivative = lambda t: scipy.misc.derivative(self._control_target, t)
+
+        B_matrix = np.array(self.B_matrix).reshape((-1, 1))
+        # Remove to allow multidimensional u
+        C_matrix = np.array(self.C_matrix).reshape((1, -1))
+        # Construct the derivative controller
+        BC_mat = np.dot(B_matrix, C_matrix)
+        derivative_control_mat = np.linalg.inv(np.eye(BC_mat.shape[0]) - kd * BC_mat)
+
+        def controlled_RHS(RHS, x, t):
+            """Return function for giving the controlled system RHS,
+            for uncontrolled RHS, state x, time t.
+
+                RHS : ndarray
+                    The derivative of the system, evaluated at state
+                    x, time t
+
+                x : ndarray
+                    Vector of floats representing the system state at
+                    the current instant
+
+                t : float Current time
+
+            Raises the following exceptions:
+
+                Raises ValueError if the dimension of the state
+                doesn't correctly correspond to that of the gains
+
+            Returns the new, controlled RHS of the ODE system, with a
+            feedback control strategy applied.
+            """
+            state = np.array(x).reshape((-1, 1))
+            if not state.shape == B_matrix.shape:
+                raise ValueError(
+                    "B matrix must contain the same number of elements as the system state"
+                )
+            if not C_matrix.T.shape == state.shape:
+                raise ValueError(
+                    "C matrix must contain the same number of elements as the system state"
+                )
+            target_derivative = derivative(t)
+            control_scalar = (
+                kp * (np.dot(C_matrix, state) - self._control_target(t))
+                - kd * target_derivative
+            )
+            uncorrected_RHS = np.array(RHS).reshape((-1, 1)) + B_matrix * control_scalar
+            return np.dot(derivative_control_mat, uncorrected_RHS)
+
+        return controlled_RHS
 
     def _control_target(self, t):
         """Evaluate the control target and reshape the result into a
