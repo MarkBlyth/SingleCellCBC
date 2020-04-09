@@ -16,3 +16,6 @@
       - Force necessary parameters to be set on construction
 * PO_continuation.py
     - Implement /everything/
+* pid.py
+    - Add docstrings
+    - Add robustness / value checking
