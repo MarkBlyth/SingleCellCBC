@@ -7,7 +7,6 @@
     - Restructure as module
 * gpr.py
     - Test everything!
-    - Write docstrings
     - Implement GPR.get_variance
     - Implement GPR.add_data
     - Implement GPR.remove_data
