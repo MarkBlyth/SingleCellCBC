@@ -1,0 +1,3 @@
+[submodule "fastF0Nls"]
+	path = fastF0Nls
+	url = https://github.com/jkjaer/fastF0Nls.git
