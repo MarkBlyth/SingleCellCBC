@@ -189,7 +189,7 @@ class _Kernel(ABC):
         """
         pass
 
-    def _get_cov_matrix(self, X1, X2, noise_term=False):
+    def get_cov_matrix(self, X1, X2, noise_term=False):
         """Construct a covariance matrix between array of row vectors
         X1, and X2.
 
@@ -251,7 +251,7 @@ class _Kernel(ABC):
             raise ValueError("Could not cast input data to floats")
 
     def __call__(self, X1, X2, noise_term=False):
-        return self._get_cov_matrix(X1, X2, noise_term)
+        return self.get_cov_matrix(X1, X2, noise_term)
 
 
 class SEKernel(_Kernel):
