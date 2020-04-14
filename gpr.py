@@ -321,7 +321,7 @@ class SEKernel(_Kernel):
             TypeError : if sigma_f cannot be cast to a float
         """
         self.sigma_f = sigma_f
-        self.l = l
+        self.l = np.array([l]) if np.isscalar(l) else np.array(l)
         # Check l if set
         if l is not None:
             # Check l is 1d
