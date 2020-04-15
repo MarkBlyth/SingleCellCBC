@@ -1,5 +1,5 @@
 * General
-    - Hyperparameter optimisation
+    - Improve the hyperparameter optimisation to something more application-specific than just scipy.optimize
     - Write tests
     - Write README
     - Generate docs
@@ -10,7 +10,7 @@
     - Implement GPR.get_variance
     - Implement GPR.add_data
     - Implement GPR.remove_data
-    - Add MIMO support
+    - Add general hyperparameter optimisation methods to the GPR submodule
 * controller.py
     - Refactor control strategies into separate classes
       - Force necessary parameters to be set on construction
