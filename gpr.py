@@ -131,13 +131,22 @@ class GPR:
         __init__, add_data, or set_covariance_func_and_compute.
         """
         self.Kxx = self.cov(self._X, self._X, noise_term=True)
-        self._L = scipy.linalg.cho_factor(self.Kxx)
-        self._alpha = scipy.linalg.cho_solve(self._L, self._y)
-        self.log_likelihood = (
-            -0.5 * np.dot(self._y, self._alpha)
-            - np.sum(np.log(np.diag(self._L[0])))
-            - self._X.shape[0] * np.log(2 * np.pi) * 0.5
-        )
+        try:
+            self._L = scipy.linalg.cho_factor(self.Kxx)
+            self._alpha = scipy.linalg.cho_solve(self._L, self._y)
+            self.log_likelihood = (
+                -0.5 * np.dot(self._y, self._alpha)
+                - 0.5 * np.sum(np.log(np.diag(self._L[0])))
+                - 0.5 * self._X.shape[0] * np.log(2 * np.pi)
+            )
+        except scipy.linalg.LinAlgError:
+            # If the matrix is ill-conditioned for a Cholesky solution
+            self._alpha = scipy.linalg.solve(self.Kxx, self._y)
+            self.log_likelihood = (
+                -0.5 * np.dot(self._y, self._alpha)
+                - 0.5 * np.sum(np.log(np.diag(self.Kxx)))
+                - 0.5 * self._X.shape[0] * np.log(2 * np.pi)
+            )
 
     def __call__(self, X):
         return self.predict(X)
