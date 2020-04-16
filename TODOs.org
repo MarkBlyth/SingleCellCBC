@@ -1,21 +1,29 @@
 * General
+    - Move all checks out of private functions and into public ones, for consistency
     - Improve the hyperparameter optimisation to something more application-specific than just scipy.optimize
     - Write tests
     - Write README
     - Generate docs
     - Add license
     - Restructure as module
+
 * gpr.py
     - Test everything!
     - Implement GPR.get_variance
     - Implement GPR.add_data
     - Implement GPR.remove_data
     - Add general hyperparameter optimisation methods to the GPR submodule
+
 * controller.py
     - Refactor control strategies into separate classes
       - Force necessary parameters to be set on construction
+
 * PO_continuation.py
-    - Implement /everything/
+    - Implement automatic sigma_f estimation
+
 * pid.py
     - Add docstrings
     - Add robustness / value checking
+
+* model_class.py
+  - Force essential arguments into constructor
