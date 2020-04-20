@@ -36,7 +36,6 @@ ys = random_function(xs, l, sigma_f)
 #   This is designed to replicate us only
 #   having partial knowledege (few observations)
 #   of the underlying process
-xs = xs.reshape((-1, 1))
 training_X = xs[:-1:5]
 training_y = ys[:-1:5]
 
