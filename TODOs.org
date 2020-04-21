@@ -1,4 +1,9 @@
 * General
+    - Test with HH model
+      - HH is 4d with huge numbers of parameters; CBC should...
+	a) make it possible to extract the underlying bifurcation structure, without needing to try to visualise all four dimensions
+        b) provide an easy way to test the CBC system on LPC bifurcations
+	c) demonstrate the applicability of the method to real-world systems, and fast-spiking systems
     - Move all checks out of private functions and into public ones, for consistency
     - Improve the hyperparameter optimisation to something more application-specific than just scipy.optimize
     - Write tests
@@ -8,6 +13,8 @@
     - Restructure as module
 
 * gpr.py
+    - log-marginal likelihood went (far!) above 0, which should never happen. FIND OUT WHY! It's impossible to use this hyperparameter optimisation without correct log likelihoods.
+    - Test the new interface, especially for list-scalar predictions since it doesn't seem to work on that
     - Test everything!
     - Implement GPR.get_variance
     - Implement GPR.add_data
@@ -18,7 +25,9 @@
     - Refactor control strategies into separate classes
       - Force necessary parameters to be set on construction
 
-* PO_continuation.py
+* periodic_orbit.py
+    - Add bounds on hyperparameter optimization
+    - Develop a more application-specific hyperparameter optimization
     - Implement automatic sigma_f estimation
 
 * pid.py
