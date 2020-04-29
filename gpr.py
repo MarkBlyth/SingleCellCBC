@@ -1,6 +1,7 @@
 import numpy as np
 from abc import ABC, abstractmethod
 import scipy.linalg
+import warnings
 
 """
 Code interface:
@@ -198,7 +199,12 @@ class GPR:
                 - 0.5 * np.sum(np.log(np.diag(self._L[0])))
                 - 0.5 * self._X.shape[0] * np.log(2 * np.pi)
             )
-        except scipy.linalg.LinAlgError:
+        except scipy.linalg.LinAlgError as e:
+            warnings.warn(
+                "Cholesky decomposition failed with warning {0}. Reverting to non-Cholesky solution".format(
+                    e
+                )
+            )
             # If the matrix is ill-conditioned for a Cholesky solution
             self._alpha = scipy.linalg.solve(self.Kxx, self._y)
             self.log_likelihood = (
