@@ -217,7 +217,31 @@ class GPR:
         return self.predict(X)
 
     def get_variance(self, X):
-        raise NotImplementedError
+        X = np.array([[X]]) if np.isscalar(X) else np.array(X)
+        # If X is 3d, 4d, ...
+        if len(X.shape)>2:
+            raise ValueError("Cannot handle {0} dimensional X".format(len(X.shape)))
+        # If X is 1d
+        if len(X.shape)==1:
+            if len(self._X[0])==1:
+                # List of scalars
+                X = X.reshape((-1,1))
+            else:
+                # Single row vector
+                X = X.reshape((1,-1))
+        if not X[0].shape == self._X[0].shape:
+            raise ValueError("Vectors in X must match the shape of vectors in the training data")
+        # Data checks done
+        if not "_L" in self.__dict__:
+            # Variance only implemented for Cholesky solution
+            raise NotImplementedError(
+                "Variance has not been implemented for non-Cholesky solutions"
+            )
+        k_xstar_xstar = self.cov(X,X, True)
+        kstar = self.cov(X, self._X)
+        v = scipy.linalg.cho_solve(self._L, kstar)
+        return k_xstar_xstar - np.dot(v.T, v)
+
 
     def add_data(self, data_X, data_y=None):
         raise NotImplementedError
