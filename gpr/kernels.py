@@ -273,35 +273,51 @@ class SEKernel(_Kernel):
         return sigma_f * np.exp(exp_arg)
 
 
+class _AbstractPeriodicKernel(SEKernel, ABC):
+    """To make the Gaussian process periodic, we simply ensure the
+    covariance is periodic. This abstract class subclasses SEKernel
+    and ABC, to get an abstract implementation of an RBF kernel.
+    """
 
-class PeriodicSEKernel(SEKernel):
-    """
-    To make the Gaussian process periodic, we simply ensure the
-    covariance is periodic. Here, we let the correlation be given by
-    sum[ m = -infty to infty] of cov(x1, x2+mT), for period T. This
-    is achieved by subclassing SEKernel.
-    """
     def __init__(self, period, sigma_n=0, sigma_f=1, l=None):
         super().__init__(sigma_n, sigma_f, l)
         # Check period is float > 0
-        if not isinstance(period, (float,int)):
+        if not isinstance(period, (float, int)):
             raise TypeError("period must be float or int")
         if not period > 0:
             raise ValueError("period must be greater than zero")
         self._period = period
 
-    def cov(self, x1, x2):
-        # Check x1, x2 are scalar
-        p1 = np.mod(x2-x1, self._period)
-        p2 = np.mod(x1-x2, self._period)
-        phase = min(p1,p2)
-        return super().cov(x1, x1+phase)
-
     def set_hyperparams(self, sigma_n=None, sigma_f=None, l=None, period=None):
         super().set_hyperparams(sigma_n, sigma_f, l)
         if period is not None:
-            if not isinstance(period, (float,int)):
+            if not isinstance(period, (float, int)):
                 raise TypeError("period must be float or int")
             if not period > 0:
                 raise ValueError("period must be greater than zero")
             self._period = period
+
+
+class PeriodicSEKernel(_AbstractPeriodicKernel):
+    """Here we model periodic covariance by letting the correlation be
+    given by sum[ m = -infty to infty] of cov(x1, x2+mT), for period
+    T. The code here uses a modulo operator to approximate this.
+    """
+
+    def cov(self, x1, x2):
+        # TODO Check x1, x2 are scalar
+        p1 = np.mod(x2 - x1, self._period)
+        p2 = np.mod(x1 - x2, self._period)
+        phase = min(p1, p2)
+        return super().cov(x1, x1 + phase)
+
+
+class CosinePeriodicKernel(_AbstractPeriodicKernel):
+    """Here we model periodic covariance by letting the correlation be the
+    SEKernel acting on the cosine of the distance between two scalar
+    inputs.
+    """
+
+    def cov(self, x1, x2):
+        # TODO Check x1, x2 are scalar
+        return super().cov(np.cos(x2 - x1))
