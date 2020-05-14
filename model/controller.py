@@ -1,5 +1,5 @@
 import numpy as np
-from pid import _PID
+from .pid import _PID
 import scipy.misc
 
 

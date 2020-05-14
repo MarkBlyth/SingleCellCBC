@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from model_class import Model
-from controller import Controller
+from model.modelclass import Model
+from model.controller import Controller
 import matplotlib.pyplot as plt
 import numpy as np
 import math

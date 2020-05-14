@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from model_class import Model
+from model.modelclass import Model
 import matplotlib.pyplot as plt
 
 
