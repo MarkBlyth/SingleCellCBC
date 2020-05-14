@@ -80,7 +80,6 @@ class Model:
         Any args, kwargs provided are passed to the solver. All
         arguments required by the solver, besides the function itself,
         must be passed in this way."""
-        print(type(self.controller), isinstance(self.controller, Controller))
         # Check model has been defined
         if not "model" in self.__dict__.keys():
             raise AttributeError("No model has been defined")
