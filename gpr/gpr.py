@@ -193,25 +193,22 @@ class GPR:
         self.Kxx = self.cov(self._X, self._X, noise_term=True)
         try:
             self._L = scipy.linalg.cho_factor(self.Kxx)
-            self._alpha = scipy.linalg.cho_solve(self._L, self._y)
-            self.log_likelihood = (
-                -0.5 * np.dot(self._y, self._alpha)
-                - 0.5 * np.sum(np.log(np.diag(self._L[0])))
-                - 0.5 * self._X.shape[0] * np.log(2 * np.pi)
-            )
         except scipy.linalg.LinAlgError as e:
             warnings.warn(
-                "Cholesky decomposition failed with warning {0}. Reverting to non-Cholesky solution".format(
+                "Cholesky decomposition failed with warning {0}. Adding jitter".format(
                     e
                 )
             )
-            # If the matrix is ill-conditioned for a Cholesky solution
-            self._alpha = scipy.linalg.solve(self.Kxx, self._y)
-            self.log_likelihood = (
-                -0.5 * np.dot(self._y, self._alpha)
-                - 0.5 * np.sum(np.log(np.diag(self.Kxx)))
-                - 0.5 * self._X.shape[0] * np.log(2 * np.pi)
+            self._L = scipy.linalg.cho_factor(
+                self.Kxx + 1e-6 * np.eye(self.Kxx.shape[0])
             )
+
+        self._alpha = scipy.linalg.cho_solve(self._L, self._y)
+        self.log_likelihood = (
+            -0.5 * np.dot(self._y, self._alpha)
+            - 0.5 * np.sum(np.diag(self._L[0]))
+            - 0.5 * self._X.shape[0] * np.log(2 * np.pi)
+        )
 
     def __call__(self, X):
         return self.predict(X)
@@ -219,29 +216,30 @@ class GPR:
     def get_variance(self, X):
         X = np.array([[X]]) if np.isscalar(X) else np.array(X)
         # If X is 3d, 4d, ...
-        if len(X.shape)>2:
+        if len(X.shape) > 2:
             raise ValueError("Cannot handle {0} dimensional X".format(len(X.shape)))
         # If X is 1d
-        if len(X.shape)==1:
-            if len(self._X[0])==1:
+        if len(X.shape) == 1:
+            if len(self._X[0]) == 1:
                 # List of scalars
-                X = X.reshape((-1,1))
+                X = X.reshape((-1, 1))
             else:
                 # Single row vector
-                X = X.reshape((1,-1))
+                X = X.reshape((1, -1))
         if not X[0].shape == self._X[0].shape:
-            raise ValueError("Vectors in X must match the shape of vectors in the training data")
+            raise ValueError(
+                "Vectors in X must match the shape of vectors in the training data"
+            )
         # Data checks done
         if not "_L" in self.__dict__:
             # Variance only implemented for Cholesky solution
             raise NotImplementedError(
                 "Variance has not been implemented for non-Cholesky solutions"
             )
-        k_xstar_xstar = self.cov(X,X, True)
+        k_xstar_xstar = self.cov(X, X, True)
         kstar = self.cov(X, self._X)
         v = scipy.linalg.cho_solve(self._L, kstar)
         return k_xstar_xstar - np.dot(v.T, v)
-
 
     def add_data(self, data_X, data_y=None):
         raise NotImplementedError
