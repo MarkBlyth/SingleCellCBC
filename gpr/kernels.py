@@ -325,7 +325,7 @@ class CosinePeriodicKernel(_AbstractPeriodicKernel):
 
     def cov(self, x1, x2):
         # TODO Check x1, x2 are scalar
-        return super().cov(np.cos((x2 - x1)/2)**2)
+        return self.sigma_f * np.exp(np.cos(self._period*(x2 - x1)/2)**2 / self.l)
 
 
 KERNEL_NAMES = {"SEKernel":SEKernel, "CosineKernel":CosinePeriodicKernel, "PeriodicSEKernel":PeriodicSEKernel}
