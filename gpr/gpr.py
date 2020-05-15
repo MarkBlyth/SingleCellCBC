@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.linalg
 import warnings
-import kernels
+from . import kernels
 
 """
 Code interface:
