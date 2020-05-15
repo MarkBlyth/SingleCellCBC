@@ -198,6 +198,8 @@ class SEKernel(_Kernel):
             # Make sure l is all non-negative
             if np.any(self.l <= 0):
                 raise ValueError("Characteristic lengths l must all be greater than 0")
+        else:
+            self.l = None
         # Check sigma_f if set
         if sigma_f is not None:
             # Check sigma_f is a scalar

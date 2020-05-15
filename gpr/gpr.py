@@ -199,10 +199,10 @@ class GPR:
                 self._L = scipy.linalg.cho_factor(self.Kxx + jittermat)
                 cholesky_fail = False
             except scipy.linalg.LinAlgError:
+                jitter += 1
                 warnings.warn(
                     "Cholesky decomposition failed, adding {0}e-6 jitter".format(jitter)
                 )
-                jitter += 1
 
         self._alpha = scipy.linalg.cho_solve(self._L, self._y)
         self.log_likelihood = (
