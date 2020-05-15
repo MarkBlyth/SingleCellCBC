@@ -320,4 +320,4 @@ class CosinePeriodicKernel(_AbstractPeriodicKernel):
 
     def cov(self, x1, x2):
         # TODO Check x1, x2 are scalar
-        return super().cov(np.cos(x2 - x1))
+        return super().cov(np.cos((x2 - x1)/2)**2)
