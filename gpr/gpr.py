@@ -191,17 +191,18 @@ class GPR:
         __init__, add_data, or set_covariance_func_and_compute.
         """
         self.Kxx = self.cov(self._X, self._X, noise_term=True)
-        try:
-            self._L = scipy.linalg.cho_factor(self.Kxx)
-        except scipy.linalg.LinAlgError as e:
-            warnings.warn(
-                "Cholesky decomposition failed with warning {0}. Adding jitter".format(
-                    e
+        cholesky_fail = True
+        jitter = 0
+        while cholesky_fail:
+            try:
+                jittermat = jitter * 1e-6 * np.eye(self.Kxx.shape[0])
+                self._L = scipy.linalg.cho_factor(self.Kxx + jittermat)
+                cholesky_fail = False
+            except scipy.linalg.LinAlgError:
+                warnings.warn(
+                    "Cholesky decomposition failed, adding {0}e-6 jitter".format(jitter)
                 )
-            )
-            self._L = scipy.linalg.cho_factor(
-                self.Kxx + 1e-6 * np.eye(self.Kxx.shape[0])
-            )
+                jitter += 1
 
         self._alpha = scipy.linalg.cho_solve(self._L, self._y)
         self.log_likelihood = (
