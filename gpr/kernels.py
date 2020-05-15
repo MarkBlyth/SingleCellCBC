@@ -108,6 +108,7 @@ class SEKernel(_Kernel):
     """Callable class for computing square-exponential kernels. Implements
     the _Kernel abstract class.
     """
+    name = "SEKernel"
 
     def __init__(self, sigma_n=0, sigma_f=1, l=None):
         """
@@ -303,6 +304,7 @@ class PeriodicSEKernel(_AbstractPeriodicKernel):
     given by sum[ m = -infty to infty] of cov(x1, x2+mT), for period
     T. The code here uses a modulo operator to approximate this.
     """
+    name = "PeriodicSEKernel"
 
     def cov(self, x1, x2):
         # TODO Check x1, x2 are scalar
@@ -317,7 +319,11 @@ class CosinePeriodicKernel(_AbstractPeriodicKernel):
     SEKernel acting on the cosine of the distance between two scalar
     inputs.
     """
+    name = "CosineKernel"
 
     def cov(self, x1, x2):
         # TODO Check x1, x2 are scalar
         return super().cov(np.cos((x2 - x1)/2)**2)
+
+
+KERNEL_NAMES = {"SEKernel":SEKernel, "CosineKernel":CosinePeriodicKernel, "PeriodicSEKernel":PeriodicSEKernel}
