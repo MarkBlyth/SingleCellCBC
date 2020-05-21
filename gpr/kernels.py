@@ -316,16 +316,16 @@ class PeriodicSEKernel(_AbstractPeriodicKernel):
         return super().cov(x1, x1 + phase)
 
 
-class CosinePeriodicKernel(_AbstractPeriodicKernel):
+class PeriodicKernel(_AbstractPeriodicKernel):
     """Here we model periodic covariance by letting the correlation be the
-    SEKernel acting on the cosine of the distance between two scalar
-    inputs.
+    SEKernel acting on the sine of the distance between two inputs.
     """
-    name = "CosineKernel"
+    name = "PeriodicKernel"
 
     def cov(self, x1, x2):
-        # TODO Check x1, x2 are scalar
-        return self.sigma_f * np.exp(np.cos(self._period*(x2 - x1)/2)**2 / self.l)
+        dist = np.linalg.norm(x2-x1)
+        exp_arg = np.sin(np.pi*dist/(2*self._period))**2 / self.l
+        return self.sigma_f * np.exp(-exp_arg)
 
 
-KERNEL_NAMES = {"SEKernel":SEKernel, "CosineKernel":CosinePeriodicKernel, "PeriodicSEKernel":PeriodicSEKernel}
+KERNEL_NAMES = {"SEKernel":SEKernel, "PeriodicKernel":PeriodicKernel, "PeriodicSEKernel":PeriodicSEKernel}
