@@ -324,7 +324,7 @@ class PeriodicKernel(_AbstractPeriodicKernel):
 
     def cov(self, x1, x2):
         dist = np.linalg.norm(x2-x1)
-        exp_arg = np.sin(np.pi*dist/(2*self._period))**2 / self.l
+        exp_arg = np.sin(np.pi*dist/(4*self._period))**2 / self.l
         return self.sigma_f * np.exp(-exp_arg)
 
 
