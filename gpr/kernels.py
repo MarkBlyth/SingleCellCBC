@@ -253,6 +253,7 @@ class PeriodicSEKernel(_AbstractPeriodicKernel):
     given by sum[ m = -infty to infty] of cov(x1, x2+mT), for period
     T. The code here uses a modulo operator to approximate this.
     """
+
     name = "PeriodicSEKernel"
 
     def cov(self, x1, x2):
