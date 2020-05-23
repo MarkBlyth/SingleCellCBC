@@ -268,12 +268,17 @@ class PeriodicKernel(_AbstractPeriodicKernel):
     """Here we model periodic covariance by letting the correlation be the
     SEKernel acting on the sine of the distance between two inputs.
     """
+
     name = "PeriodicKernel"
 
     def cov(self, x1, x2):
-        dist = np.linalg.norm(x2-x1)
-        exp_arg = np.sin(np.pi*dist/(self._period))**2 / self.l
+        dist = np.linalg.norm(x2 - x1)
+        exp_arg = np.sin(np.pi * dist / (self._period)) ** 2 / self.l
         return self.sigma_f * np.exp(-exp_arg)
 
 
-KERNEL_NAMES = {"SEKernel":SEKernel, "PeriodicKernel":PeriodicKernel, "PeriodicSEKernel":PeriodicSEKernel}
+KERNEL_NAMES = {
+    "SEKernel": SEKernel,
+    "PeriodicKernel": PeriodicKernel,
+    "PeriodicSEKernel": PeriodicSEKernel,
+}
