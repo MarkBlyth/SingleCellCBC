@@ -108,11 +108,11 @@ class SEKernel(_Kernel):
     """Callable class for computing square-exponential kernels. Implements
     the _Kernel abstract class.
     """
+
     name = "SEKernel"
 
-    def __init__(self, sigma_n=0, sigma_f=1, l=None):
-        """
-        Build a SEKernel object. 
+    def __init__(self, sigma_n, sigma_f, l):
+        """Build a SEKernel object. 
 
             sigma_n : float
                 Value >=0 representing the amount of noise in our
@@ -120,21 +120,31 @@ class SEKernel(_Kernel):
                 present in the measurements.
 
             sigma_f : float
-                Value >=0 representing the signal variance. Default 1.
+                Value >=0 representing the signal variance
 
-            l : 1d array of floats
-                A list of characteristic distances. If set, there must
-                be exactly one characteristic distance for each input
-                data dimension. If unset, distances default to 1. Each
-                entry must be greater than zero.
+            l : 1d array of floats A list of characteristic distances.
+                If set, there must be exactly one characteristic
+                distance for each input data dimension. Each entry
+                must be greater than zero.
 
         Passes up any exceptions.
+
         """
         # Set and check hyperparameters
         self.set_hyperparams(sigma_n, sigma_f, l)
 
     def cov(self, x1, x2):
-        return self._SE_covariance(x1, x2, self.sigma_f, self.l)
+        """Calculate the square-exponential covariance between two vectors
+        x1, x2, for hyperparameters sigma_f, l. Assumes sigma_f, l
+        have been checked as much as possible by set_hyperparams.
+        
+            x1, x2 : 1-by-n float array
+
+        Returns the square-exponential covariance between x1, x2.
+        Assumes everything has been checked by previous functions!
+        """
+        exp_arg = -0.5 * np.dot(np.dot((x2 - x1).T, self.l), x2 - x1)
+        return self.sigma_f * np.exp(exp_arg)
 
     def set_hyperparams(self, sigma_n=None, sigma_f=None, l=None):
         """
@@ -198,8 +208,6 @@ class SEKernel(_Kernel):
             # Make sure l is all non-negative
             if np.any(self.l <= 0):
                 raise ValueError("Characteristic lengths l must all be greater than 0")
-        else:
-            self.l = None
         # Check sigma_f if set
         if sigma_f is not None:
             # Check sigma_f is a scalar
@@ -213,67 +221,6 @@ class SEKernel(_Kernel):
             # Make sure sigma_f is non-negative
             if self.sigma_f <= 0:
                 raise ValueError("sigma_f must be greater than 0")
-
-    def _SE_covariance(self, x1, x2, sigma_f=1, l=None):
-        """Calculate the square-exponential covariance between two vectors
-        x1, x2, for hyperparameters sigma_f, l. Assumes sigma_f, l
-        have been checked as much as possible by set_hyperparams.
-        
-            x1, x2 : 1-by-n float array
-
-            sigma_f : float
-                Value >=0 representing the signal variance. Default 1.
-
-            l : 1d array of floats
-                A list of characteristic distances. If set, there must
-                be exactly one characteristic distance for each input
-                data dimension. If unset, distances default to 1. Each
-                entry must be greater than zero.
-
-        Raises the following:
-        
-            TypeError : if x1 or x2 cannot be cast to a float
-
-            ValueError : if x1 and x2 are not 1d arrays 
-
-            ValueError : if x1 and x2 do not contain the same number
-                         of entries
-
-            ValueError : if l and x1, x2 do not contain the same
-                         number of entries
-
-        Returns the square-exponential covariance between x1, x2.
-        """
-        x1squeeze, x2squeeze = np.array(x1).squeeze(), np.array(x2).squeeze()
-        try:
-            x1squeeze = x1squeeze.astype(float)
-            x2squeeze = x2squeeze.astype(float)
-        except TypeError:
-            raise TypeError("x1 and x2 must be castable to float arrays")
-        try:
-            # Make sure x1, x2 are vectors, not matrices
-            if len(x1squeeze) != 1:
-                raise ValueError("Expected vectors for x1, x2, but recieved matrices")
-        except TypeError:
-            # If xi are scalar, len will throw a type error
-            # We needn't worry about it, since scalars are necessarily the same dimension
-            x1squeeze, x2squeeze = np.array([x1squeeze]), np.array([x2squeeze])
-        # Make sure x1, x2 are of the same dimensions
-        if x1.shape != x2.shape:
-            raise ValueError("Vectors x1, x2 must be the same dimension")
-        # Set l to identity if not defined
-        if l is None:
-            l = np.eye(x1squeeze.shape[0])
-        else:
-            # Check l is the same dimension as our vectors
-            # No need for other checks since l's type, sigma_f were checked by set_params
-            if not l.shape == x1squeeze.shape:
-                raise ValueError("l must be the same dimension as input vectors")
-            # Turn l into a diagonal matrix
-            l = np.diag(1 / l)
-        # Calculate and return!
-        exp_arg = -0.5 * np.dot(np.dot((x2 - x1).T, l), x2 - x1)
-        return sigma_f * np.exp(exp_arg)
 
 
 class _AbstractPeriodicKernel(SEKernel, ABC):
