@@ -59,10 +59,12 @@ class _Kernel(ABC):
         X2mat = self._matrixify(X2)
         n_cols = X1mat.shape[0]
         n_rows = X2mat.shape[0]
-        noiseless_mat = np.zeros((n_rows, n_cols))
-        for i in range(n_rows):
-            for j in range(n_cols):
-                noiseless_mat[i][j] = self.cov(X1mat[j], X2mat[i])
+        noiseless_mat = np.array(
+            [
+                [self.cov(X1mat[j], X2mat[i])[0] for i in range(n_rows)]
+                for j in range(n_cols)
+            ]
+        )
         if not noise_term:
             return noiseless_mat
         # add in a noise contribution
