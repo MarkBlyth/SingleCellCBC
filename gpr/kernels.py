@@ -342,9 +342,11 @@ class AbstractMatern(SEKernel, ABC):
         super().__init__(sigma_n, sigma_f, l)
 
     def set_hyperparams(self, sigma_n=None, sigma_f=None, l=None):
-        l = np.array(l).squeeze()
-        if not np.isscalar(l):
-            raise ValueError("l must be scalar")
+        try:
+            if len(l) != 1:
+                raise ValueError("l must be scalar")
+        except TypeError:
+            pass
         super().set_hyperparams(sigma_n, sigma_f, l)
 
     @abstractmethod
