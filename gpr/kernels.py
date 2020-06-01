@@ -364,6 +364,34 @@ class Matern32(AbstractMatern):
         return self.sigma_f * matern_term * np.exp(exp_arg)
 
 
+class PeriodicMatern32(Matern32):
+    name = "PeriodicMatern32"
+
+    def __init__(self, period, sigma_n=0, sigma_f=1, l=None):
+        super().__init__(sigma_n, sigma_f, l)
+        # Check period is float > 0
+        if not isinstance(period, (float, int)):
+            raise TypeError("period must be float or int")
+        if not period > 0:
+            raise ValueError("period must be greater than zero")
+        self._period = period
+
+    def set_hyperparams(self, sigma_n=None, sigma_f=None, l=None, period=None):
+        super().set_hyperparams(sigma_n, sigma_f, l)
+        if period is not None:
+            if not isinstance(period, (float, int)):
+                raise TypeError("period must be float or int")
+            if not period > 0:
+                raise ValueError("period must be greater than zero")
+            self._period = period
+
+    def cov(self, x1, x2):
+        dist = np.abs(np.sin(numpy.linalg.norm(x2 - x1) * np.pi / self._period))
+        exp_arg = -np.sqrt(3) * dist / self.l
+        matern_term = 1 + np.sqrt(3) * dist / self.l
+        return self.sigma_f * matern_term * np.exp(exp_arg)
+
+
 class Matern52(AbstractMatern):
     name = "Matern52"
 
@@ -379,6 +407,7 @@ KERNEL_NAMES = {
     "SEKernel": SEKernel,
     "PeriodicKernel": PeriodicKernel,
     "PeriodicSEKernel": PeriodicSEKernel,
+    "PeriodicMatern32": PeriodicMatern32,
     "Matern32": Matern32,
     "Matern52": Matern52,
 }
