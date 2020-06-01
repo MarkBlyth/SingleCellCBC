@@ -1,5 +1,5 @@
 import numpy as np
-import np.linalg
+import numpy.linalg
 from abc import ABC, abstractmethod
 
 
@@ -332,7 +332,7 @@ class PeriodicKernel(_AbstractPeriodicKernel):
     name = "PeriodicKernel"
 
     def cov(self, x1, x2):
-        dist = np.linalg.norm(x2 - x1)
+        dist = numpy.linalg.norm(x2 - x1)
         exp_arg = np.sin(np.pi * dist / (self._period)) ** 2 / self.l
         return self.sigma_f * np.exp(-exp_arg)
 
@@ -354,7 +354,7 @@ class AbstractMatern(SEKernel, ABC):
 
 class Matern32(AbstractMatern):
     def cov(self, x1, x2):
-        dist = np.linalg.norm(x2 - x1)
+        dist = numpy.linalg.norm(x2 - x1)
         exp_arg = -np.sqrt(3) * dist / self.l
         matern_term = 1 + np.sqrt(3) * dist / self.l
         return self.sigma_f * matern_term * np.exp(exp_arg)
@@ -362,7 +362,7 @@ class Matern32(AbstractMatern):
 
 class Matern52(AbstractMatern):
     def cov(self, x1, x2):
-        dist = np.linalg.norm(x2 - x1)
+        dist = numpy.linalg.norm(x2 - x1)
         exp_arg = -np.sqrt(5) * dist / self.l
         matern_term = 1 + np.sqrt(5) * dist / self.l + \
             5 * dist ** 2 / (3 * self.l ** 2)
