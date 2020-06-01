@@ -45,11 +45,11 @@ class _Kernel(ABC):
 
             X1, X2 : float array
                 Array of row vectors to evaluate covariance between.
-        
+
             noise_term : bool
                 True if we want to add a noise contribution to the
                 covariance matrix, False otherwise.
-        
+
         Passes up any exceptions.
 
         Returns a covariance matrix between each vector in X1, X2.
@@ -73,7 +73,7 @@ class _Kernel(ABC):
         """
         Take a scalar, row vector, or 2d array of row vectors, check
         it, and return a 2d array of row vectors.
-        
+
             X : float
                 Scalar, 1d row vector, or 2d array of row vectors,
                 representing the datapoints at which we want to
@@ -93,7 +93,8 @@ class _Kernel(ABC):
         xmat = xarr.reshape((1, -1)) if len(xarr.shape) == 1 else xarr
         # Make sure we're working on a 2d array (list of 1d vectors)
         if len(xmat.shape) != 2 or xmat.size == 0:
-            raise ValueError("Covariance must be calculated on an array of row vectors")
+            raise ValueError(
+                "Covariance must be calculated on an array of row vectors")
         # Make sure everything is a float
         try:
             return xmat.astype(float)
@@ -157,7 +158,7 @@ class SEKernel(_Kernel):
         Hyperparameters that are passed as None are left unchanged.
 
         Raises the following:
-        
+
             ValueError : if sigma_n is negative
 
             ValueError : if l is not a 1d array
@@ -194,10 +195,12 @@ class SEKernel(_Kernel):
             try:
                 self.l = self.l.astype(float)
             except TypeError:
-                raise TypeError("Entries of l must all be castable to type float")
+                raise TypeError(
+                    "Entries of l must all be castable to type float")
             # Make sure l is all non-negative
             if np.any(self.l <= 0):
-                raise ValueError("Characteristic lengths l must all be greater than 0")
+                raise ValueError(
+                    "Characteristic lengths l must all be greater than 0")
         else:
             self.l = None
         # Check sigma_f if set
@@ -218,7 +221,7 @@ class SEKernel(_Kernel):
         """Calculate the square-exponential covariance between two vectors
         x1, x2, for hyperparameters sigma_f, l. Assumes sigma_f, l
         have been checked as much as possible by set_hyperparams.
-        
+
             x1, x2 : 1-by-n float array
 
             sigma_f : float
@@ -231,7 +234,7 @@ class SEKernel(_Kernel):
                 entry must be greater than zero.
 
         Raises the following:
-        
+
             TypeError : if x1 or x2 cannot be cast to a float
 
             ValueError : if x1 and x2 are not 1d arrays 
@@ -253,7 +256,8 @@ class SEKernel(_Kernel):
         try:
             # Make sure x1, x2 are vectors, not matrices
             if len(x1squeeze) != 1:
-                raise ValueError("Expected vectors for x1, x2, but recieved matrices")
+                raise ValueError(
+                    "Expected vectors for x1, x2, but recieved matrices")
         except TypeError:
             # If xi are scalar, len will throw a type error
             # We needn't worry about it, since scalars are necessarily the same dimension
@@ -268,7 +272,8 @@ class SEKernel(_Kernel):
             # Check l is the same dimension as our vectors
             # No need for other checks since l's type, sigma_f were checked by set_params
             if not l.shape == x1squeeze.shape:
-                raise ValueError("l must be the same dimension as input vectors")
+                raise ValueError(
+                    "l must be the same dimension as input vectors")
             # Turn l into a diagonal matrix
             l = np.diag(1 / l)
         # Calculate and return!
@@ -328,4 +333,5 @@ class PeriodicKernel(_AbstractPeriodicKernel):
         return self.sigma_f * np.exp(-exp_arg)
 
 
-KERNEL_NAMES = {"SEKernel":SEKernel, "PeriodicKernel":PeriodicKernel, "PeriodicSEKernel":PeriodicSEKernel}
+KERNEL_NAMES = {"SEKernel": SEKernel, "PeriodicKernel": PeriodicKernel,
+                "PeriodicSEKernel": PeriodicSEKernel}
