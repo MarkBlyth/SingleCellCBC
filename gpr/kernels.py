@@ -355,6 +355,8 @@ class AbstractMatern(SEKernel, ABC):
 
 
 class Matern32(AbstractMatern):
+    name = "Matern32"
+
     def cov(self, x1, x2):
         dist = numpy.linalg.norm(x2 - x1)
         exp_arg = -np.sqrt(3) * dist / self.l
@@ -363,6 +365,8 @@ class Matern32(AbstractMatern):
 
 
 class Matern52(AbstractMatern):
+    name = "Matern52"
+
     def cov(self, x1, x2):
         dist = numpy.linalg.norm(x2 - x1)
         exp_arg = -np.sqrt(5) * dist / self.l
