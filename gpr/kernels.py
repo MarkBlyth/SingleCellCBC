@@ -1,4 +1,5 @@
 import numpy as np
+import np.linalg
 from abc import ABC, abstractmethod
 
 
@@ -109,6 +110,7 @@ class SEKernel(_Kernel):
     """Callable class for computing square-exponential kernels. Implements
     the _Kernel abstract class.
     """
+
     name = "SEKernel"
 
     def __init__(self, sigma_n=0, sigma_f=1, l=None):
@@ -311,6 +313,7 @@ class PeriodicSEKernel(_AbstractPeriodicKernel):
     given by sum[ m = -infty to infty] of cov(x1, x2+mT), for period
     T. The code here uses a modulo operator to approximate this.
     """
+
     name = "PeriodicSEKernel"
 
     def cov(self, x1, x2):
@@ -325,13 +328,51 @@ class PeriodicKernel(_AbstractPeriodicKernel):
     """Here we model periodic covariance by letting the correlation be the
     SEKernel acting on the sine of the distance between two inputs.
     """
+
     name = "PeriodicKernel"
 
     def cov(self, x1, x2):
-        dist = np.linalg.norm(x2-x1)
-        exp_arg = np.sin(np.pi*dist/(self._period))**2 / self.l
+        dist = np.linalg.norm(x2 - x1)
+        exp_arg = np.sin(np.pi * dist / (self._period)) ** 2 / self.l
         return self.sigma_f * np.exp(-exp_arg)
 
 
-KERNEL_NAMES = {"SEKernel": SEKernel, "PeriodicKernel": PeriodicKernel,
-                "PeriodicSEKernel": PeriodicSEKernel}
+class AbstractMatern(SEKernel, ABC):
+    def __init__(self, sigma_n, sigma_f, l):
+        super().__init__(sigma_n, sigma_f, l)
+
+    def set_hyperparams(self, sigma_n=None, sigma_f=None, l=None):
+        l = np.array(l).squeeze()
+        if not np.isscalar(l):
+            raise ValueError("l must be scalar")
+        super().set_hyperparams(sigma_n, sigma_f, l)
+
+    @abstractmethod
+    def cov(self, x1, x2):
+        pass
+
+
+class Matern32(AbstractMatern):
+    def cov(self, x1, x2):
+        dist = np.linalg.norm(x2 - x1)
+        exp_arg = -np.sqrt(3) * dist / self.l
+        matern_term = 1 + np.sqrt(3) * dist / self.l
+        return self.sigma_f * matern_term * np.exp(exp_arg)
+
+
+class Matern52(AbstractMatern):
+    def cov(self, x1, x2):
+        dist = np.linalg.norm(x2 - x1)
+        exp_arg = -np.sqrt(5) * dist / self.l
+        matern_term = 1 + np.sqrt(5) * dist / self.l + \
+            5 * dist ** 2 / (3 * self.l ** 2)
+        return self.sigma_f * matern_term * np.exp(exp_arg)
+
+
+KERNEL_NAMES = {
+    "SEKernel": SEKernel,
+    "PeriodicKernel": PeriodicKernel,
+    "PeriodicSEKernel": PeriodicSEKernel,
+    "Matern32": Matern32,
+    "Matern52": Matern52,
+}
