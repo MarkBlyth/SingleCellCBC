@@ -156,7 +156,8 @@ class GPR:
                 X = X.reshape((1, -1))
         # Reject anything that's not scalar, 1d, or 2d
         if len(X.shape) != 2:
-            raise ValueError("X must be scalar, 1d array, or 2d array of row vecs")
+            raise ValueError(
+                "X must be scalar, 1d array, or 2d array of row vecs")
         # Make sure test vec dimensions are the same as training vec dimensions
         if not X[0].shape == self._X[0].shape:
             raise ValueError(
@@ -171,15 +172,15 @@ class GPR:
         posterior Gaussian process. As using a different kernel will
         yield different predictions, the model is also recomputed
         automatically.
-        
+
             cov : _Kernel obj
                 New _Kernel object to use
-        
+
         Raises the following:
-        
+
             TypeError : if cov is not a _Kernel object
         """
-        if not istype(cov, kernels._Kernel):
+        if not isinstance(cov, kernels._Kernel):
             raise TypeError("Covariance function must be a _Kernel object")
         self.cov = cov
         self._fit()
@@ -201,7 +202,8 @@ class GPR:
             except scipy.linalg.LinAlgError:
                 jitter += 1
                 warnings.warn(
-                    "Cholesky decomposition failed, adding {0}e-6 jitter".format(jitter)
+                    "Cholesky decomposition failed, adding {0}e-6 jitter".format(
+                        jitter)
                 )
 
         self._alpha = scipy.linalg.cho_solve(self._L, self._y)
@@ -218,7 +220,8 @@ class GPR:
         X = np.array([[X]]) if np.isscalar(X) else np.array(X)
         # If X is 3d, 4d, ...
         if len(X.shape) > 2:
-            raise ValueError("Cannot handle {0} dimensional X".format(len(X.shape)))
+            raise ValueError(
+                "Cannot handle {0} dimensional X".format(len(X.shape)))
         # If X is 1d
         if len(X.shape) == 1:
             if len(self._X[0]) == 1:
