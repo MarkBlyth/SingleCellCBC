@@ -1,11 +1,15 @@
+* NOTE 
+Run 
+>> git submodule update --init
+from within any given submodule, to pull the submodule contents
+
 * General
     - Test with HH model
       - HH is 4d with huge numbers of parameters; CBC should...
-	a) make it possible to extract the underlying bifurcation structure, without needing to try to visualise all four dimensions
-        b) provide an easy way to test the CBC system on LPC bifurcations
-	c) demonstrate the applicability of the method to real-world systems, and fast-spiking systems
+        a) make it possible to extract the underlying bifurcation structure, without needing to try to visualise all four dimensions
+            b) provide an easy way to test the CBC system on LPC bifurcations
+        c) demonstrate the applicability of the method to real-world systems, and fast-spiking systems
     - Move all checks out of private functions and into public ones, for consistency
-    - Improve the hyperparameter optimisation to something more application-specific than just scipy.optimize
     - Write tests
     - Write README
     - Generate docs
@@ -13,33 +17,15 @@
     - Restructure as module
 
 * gpr.py
-    - log-marginal likelihood went (far!) above 0, which should never happen. FIND OUT WHY! It's impossible to use this hyperparameter optimisation without correct log likelihoods.
-    - Test the new interface, especially for list-scalar predictions since it doesn't seem to work on that
-    - Test everything!
-    - Implement GPR.get_variance
+    - Write tests
     - Implement GPR.add_data
     - Implement GPR.remove_data
-    - Add general hyperparameter optimisation methods to the GPR submodule
-
-    - Implement some form of transfer learning
-      - GPR model for neighbouring POs will be be very similar (smooth system so arbitrarily small neighbourhoods of a parameter contain arbitrarily similar periodic orbits)
-      - Instead of computing an entirely new PO for each parameter value, try to reuse what we learned in the previous orbit, somehow
-	- Reuse kernel (with or without minor modifications)
-	- Reuse hyperparameters (even if they aren't an exact fit, it is much easier to re-optimise from an old good guess, than to do so from scratch)
-	- Possibly fit a GPR to just the error? If the difference between this PO and the previous one is a `nicer' function, we might be able to use sparse methods to fit a model to the error more rapidly than could be done to the original signal, so to save time, let PO_2(t) = PO_1(t) + e(t)
 
 * controller.py
-    - Refactor control strategies into separate classes
+    - Tidy up API
+    - Refactor control strategies into separate classes?
       - Force necessary parameters to be set on construction
-
-* periodic_orbit.py
-    - Add bounds on hyperparameter optimization
-    - Develop a more application-specific hyperparameter optimization
-    - Implement automatic sigma_f estimation
 
 * pid.py
     - Add docstrings
     - Add robustness / value checking
-
-* model_class.py
-  - Force essential arguments into constructor
