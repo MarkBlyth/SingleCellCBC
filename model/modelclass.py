@@ -24,9 +24,9 @@ class Model:
 
     Optional variables can be modified:
 
-        _parameter_type : function
+        parameter_type : function
             By default, parameters are cast to floats. The
-            self._parameter_type function is used for casting. This
+            self.parameter_type function is used for casting. This
             can be set to, eg. complex, int, etc., if different
             parameter types are desired.
 
@@ -56,8 +56,8 @@ class Model:
 
     def __init__(self, **kw):
         self.__dict__ = kw
-        if not "_parameter_type" in self.__dict__.keys():
-            self._parameter_type = float
+        if not "parameter_type" in self.__dict__.keys():
+            self.parameter_type = float
 
     def run_model(self, *args, **kwargs):
         """Simulate the model. Raises the following exceptions:
@@ -135,7 +135,7 @@ class Model:
     def construct_param_vector(self):
         """Collect together the parameter values defined in parvec,
         and load them into a dictionary. Cast them into the type
-        returned by self._parameter_type.
+        returned by self.parameter_type.
 
         Passes up any exceptions raised by
         _construct_typed_param_vector.
@@ -143,12 +143,12 @@ class Model:
         Returns a dict, mapping each string in parvec to an associated
         typed value."""
         # Allows the code to be changed to handle complex parameters, if desired
-        return self._construct_typed_param_vector(self._parameter_type)
+        return self._construct_typed_param_vector(self.parameter_type)
 
     def _construct_typed_param_vector(self, casting_func):
         """Collect together the parameter values defined in parvec,
         and load them into a dictionary. Cast them into the type
-        returned by self._parameter_type. Raises the following
+        returned by self.parameter_type. Raises the following
         exceptions:
 
             AttributeError : parvec has not been defined
