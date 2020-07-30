@@ -17,7 +17,7 @@ class _PID:
         this_error = np.dot(self.C_matrix, x) - self.target(t)
 
         # If this is the first call to the controller, do nothing
-        if not "last_time" in self.__dict__:
+        if "last_time" not in self.__dict__:
             self.last_time = t
             self.last_error = this_error
             self.integral_error = 0
@@ -26,7 +26,7 @@ class _PID:
         # Calculate PID components
         dt = t - self.last_time
         if dt < 0:
-            raise ValueError("Time must increase monotonously")
+            raise ValueError("Time must increase monotonously for integral control to work")
         integral = self.integral_error + 0.5 * (self.last_error + this_error) * dt
         derivative = 0 if dt == 0 else (this_error - self.last_error) / dt
         proportional = this_error
