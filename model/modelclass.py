@@ -1,52 +1,38 @@
 import scipy.integrate
-import inspect
-from copy import copy
 from .controller import Controller
 import numpy as np
 
 
 class Model:
-    """Class for interacting with models in in-silico CBC experiments.
-    Ducktyped to act like a dict. The class requires two variables to
-    be set:
+    """
+    Class for easily controlling models in in-silico CBC experiments.
+    The class requires two variables to be set:
 
         model : function
-            function with signature model(x, t, pars)
+            function with signature model(x, t, **pars)
 
             Returns the right-hand side of a system, given state x,
-            time t, and parameter vector pars. pars is a dict, where
-            pars[i] gives the parameter value of parameter i.
+            time t, and parameters pars. Parameters **pars are keyword
+            arguments for any model parameters.
 
-        parvec : iterable of strings 
+        parvec : iterable of strings
             Defines the name of each of the parameters in the pars
             dictionary. Eg. for a model with two free parameters Iapp
             and gca, we would have parvec = ["Iapp", "gca"]
 
-    Optional variables can be modified:
+    Optional variables can be modified using the relevant setter
+    methods:
 
-        parameter_type : function
-            By default, parameters are cast to floats. The
-            self.parameter_type function is used for casting. This
-            can be set to, eg. complex, int, etc., if different
-            parameter types are desired.
-
-        solver : function
-            By default, the scipy.integrate.solve_ivp solver is used
-            for running models. Alternative solvers can be provided
-            with self.solver. The solver must have arguments (func,
-            *args, **kwargs), where func is a function representing a
-            system RHS, of signature RHS(t,x).
-
-        controller : Controller object 
+        Model.controller : Controller object
             Controller object for applying a control scheme to the
             specified model.
 
-        openloop : bool
+        Model.uncontrolled : bool
             Boolean specifying whether a controller should be used. If
             true or unspecified, the model is run without a
             controller, in open loop. If false and a controller is
             defined, the controller is used instead. An exception is
-            raised if openloop is false and no controller has been
+            raised if uncontrolled is false and no controller has been
             specified.
 
     Any parameters defined in parvec must be initialised with a value
@@ -54,172 +40,136 @@ class Model:
     constructor call, or using the square bracket __setitem__ syntax.
     """
 
-    def __init__(self, **kw):
-        self.__dict__ = kw
-        if not "parameter_type" in self.__dict__.keys():
-            self.parameter_type = float
-
-    def run_model(self, *args, **kwargs):
-        """Simulate the model. Raises the following exceptions:
-            AttributeError : self.model does not exist
-
-            AttributeError : openloop=False, meaning a controlled
-            system is required, but no controller has been specified
+    def __init__(self, model, parvec, uncontrolled=True, controller=None):
+        """
+        TODO docstring
 
             ValueError : self.model is not a callable function
 
             ValueError : self.model does not take exactly three
             arguments
 
+        """
+        # Check model is a callable function
+        if not callable(model):
+            raise ValueError("Model is not callable function")
+        self.model = model
+        self.parvec = parvec
+        self.uncontrolled = uncontrolled
+        self.controller = controller
+        self.solution = None
+
+    def run_model(self, t_span, initial_conds=None, **kwargs):
+        """
+        Run the model system, using a controller where appropriate.
+        Initial conditions can be omitted if the system has been run
+        before, in which case they will default to the final state of
+        the previous run. Any parameters from parvec must be specified
+        in kwargs. Any arguments for the ODE solver, eg. t_eval, rtol,
+        etc., can be passed as kwargs too.
+
+            t_span : 2-tuple
+                Lower and upper bounds on the simulation's time
+                variable.
+
+            initial_conds : 1-by-n float array
+                Initial conditions for the ODE solver. If None, the
+                last state of the last ODE solver run are used. If no
+                previous run has taken place and initial_conds are
+                still None, an exception is raised.
+
+            kwargs:
+                Any parameters defined in parvec must have their
+                values defined here. Any extra keyword arguments are
+                passed to the ODE solver.
+
+        Raises the following:
+
+            AttributeError : uncontrolled=False, meaning a controlled
+            system is required, but no controller has been specified
+
             TypeError : self.controller is not a valid Controller
             object
 
-            Passes up any exceptions raised by the solver and by
-            construct_param_vector.
+            AttributeError : a parameter in parvec has not been
+            initialised with a value
 
-        Any args, kwargs provided are passed to the solver. All
-        arguments required by the solver, besides the function itself,
-        must be passed in this way."""
-        # Check model has been defined
-        if not "model" in self.__dict__.keys():
-            raise AttributeError("No model has been defined")
-        # Check model is a callable function
-        if not callable(self.model):
-            raise ValueError("Model is not callable function")
-        # Check model's number of arguments of model is correct
-        n_args = len(inspect.signature(self.model).parameters)
-        if n_args != 3:
-            raise ValueError(
-                "Model must take exactly three arguments (state, time, parameters)"
-            )
-        # Parameter checks are done in the parameter vector construction step
-        params = self.construct_param_vector()
+            Passes up any exceptions raised by the ODE solver.
+
+        Returns a bunch object, as returned by the ODE solver.
+        """
+        # Check the parameter vector has been defined
+        for key in self.parvec:
+            if key not in kwargs:
+                raise AttributeError(
+                    "Parameter {0} defined, but no value provided".format(key)
+                )
+        # If no initial conditions have been set, use the final state
+        # from the previous run
+        if initial_conds is None:
+            if self.solution is None:
+                raise ValueError(
+                    "No previous runs so initial conditions must be provided.")
+            initial_conds = self.solution.y[-1]
+
+        # Build a dict of kwargs for the model parameters and the solver kwargs
+        param_kwargs = {key: kwargs[key] for key in self.parvec}
+        solver_kwargs = {key: kwargs[key]
+                         for key in kwargs if key not in self.parvec}
         # Check if we should be controlling the system
         if (
-            "openloop" in self.__dict__
-            and not self.openloop
-            and not "controller" in self.__dict__
+            not self.uncontrolled
+            and self.controller is None
         ):
             raise AttributeError(
-                "Closed loop system has been requested, but no controller has been specified"
+                "Closed loop system has been requested, but no controller has been specified. Specify a controller using set_controller."
             )
-        if (
-            "controller" in self.__dict__
-            and "openloop" in self.__dict__
-            and not self.openloop
-        ):
-            # Ensure we have a valid control object
-            if not isinstance(self.controller, Controller):
-                raise TypeError("Specified controller is not a valid Controller object")
+        if not self.uncontrolled:
             # Get controller and bind it to model
             control = self.controller.get_controller()
 
             def binded_model(t, x):
                 # Bind params, and add a control action
-                x_dot = np.array(self.model(x, t, params))
+                x_dot = np.array(self.model(x, t, **param_kwargs))
                 u = control(x_dot, x, t)
                 return u.reshape(x_dot.shape)
-
         else:
-            # No control requested, so run unbinded model
-            binded_model = lambda t, x: self.model(x, t, params)
+            # No control requested, so run uncontrolled model
+            def binded_model(t, x): return self.model(x, t, **param_kwargs)
 
-        if not "solver" in self.__dict__:
-            solver = scipy.integrate.solve_ivp
-        else:
-            solver = self.solver
-
-        self.solution = solver(binded_model, *args, **kwargs)
+        self.solution = scipy.integrate.solve_ivp(
+            binded_model, t_span, initial_conds, **solver_kwargs)
         return self.solution
 
-    def construct_param_vector(self):
-        """Collect together the parameter values defined in parvec,
-        and load them into a dictionary. Cast them into the type
-        returned by self.parameter_type.
+    def set_uncontrolled_flag(self, new_val):
+        """
+        Set the Model.uncontrolled flag. This flag is True if the
+        system should be run without a controller, and False if the
+        system should be run with a controller. If True, a suitable
+        Controller object must be set, using set_controller.
 
-        Passes up any exceptions raised by
-        _construct_typed_param_vector.
+            new_val : bool
+                The new value of the Model.uncontrolled flag.
 
-        Returns a dict, mapping each string in parvec to an associated
-        typed value."""
-        # Allows the code to be changed to handle complex parameters, if desired
-        return self._construct_typed_param_vector(self.parameter_type)
+        Raises TypeError if new_val is not a bool.
+        """
+        if not isinstance(new_val, bool):
+            raise TypeError("new_val must be a bool")
+        self.uncontrolled = new_val
 
-    def _construct_typed_param_vector(self, casting_func):
-        """Collect together the parameter values defined in parvec,
-        and load them into a dictionary. Cast them into the type
-        returned by self.parameter_type. Raises the following
-        exceptions:
+    def set_controller(self, controller):
+        """
+        Set the controller object. This should be the instance of
+        Controller that we wish to use for controlling the system.
 
-            AttributeError : parvec has not been defined
+            controller : Controller obj
+                Controller that we wish to use.
 
-            AttributeError : a parameter in parvec has not been
-            initialised with a value
-
-            ValueError : a parameter cannot be cast to the desired
-            type
-
-        Returns a dict, mapping each string in parvec to an associated
-        typed value."""
-        # Check the parameter vector has been defined
-        if not "parvec" in self.__dict__.keys():
-            raise AttributeError(
-                "Parameter vector parvec must be defined before running a model"
-            )
-        for key in self.parvec:
-            # Check each value in the parameter vector has been initialised
-            if not key in self.__dict__.keys():
-                raise AttributeError(
-                    "Parameter {0} defined but not initialised".format(key)
-                )
-
-            # Check each value can be cast to the appropriate type
-            value = self.__dict__[key]
-            try:
-                casting_func(value)
-            except ValueError:
-                raise ValueError(
-                    "Parameter {0} (value {1}) could not be cast to a {2}".format(
-                        key, value, casting_func.__name__
-                    )
-                )
-
-        # Return a dict of parameter values, ordered according to 'parvec'
-        return {key: casting_func(self.__dict__[key]) for key in self.parvec}
-
-    """
-    Some methods for dict-like interaction
-    """
-
-    def values(self):
-        return list(self.__dict__.values())
-
-    def keys(self):
-        return list(self.__dict__.keys())
-
-    def items(self):
-        return list(self.__dict__.items())
-
-    def itervalues(self):
-        return iter(self.__dict__.values())
-
-    def iterkeys(self):
-        return iter(self.__dict__.keys())
-
-    def iteritems(self):
-        return iter(self.__dict__.items())
-
-    def __getitem__(self, k):
-        return self.__dict__[k]
-
-    def __setitem__(self, k, v):
-        self.__dict__.__setitem__(k, v)
-
-    def get(self, k, d=None):
-        return self.__dict__.get(k, d)
-
-    def has_key(self, k):
-        return k in self.__dict__
-
-    def __contains__(self, v):
-        return self.__dict__.__contains__(v)
+        Raises TypeError if controller is not a valid Controller
+        object.
+        """
+        # Ensure we have a valid control object
+        if not isinstance(self.controller, Controller):
+            raise TypeError(
+                "Specified controller is not a valid Controller object")
+        self.controller = controller
