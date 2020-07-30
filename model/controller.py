@@ -4,93 +4,111 @@ import scipy.misc
 
 
 class Controller:
-    """Class for constructing controllers. Methods are used to set up a
-    controller. The result is a function that gives the appropriate
-    control action at time t. This function can be used in addition to
-    a system to provide a model of a closed loop process. Two
-    variables must be set:
+    """
+    Class for constructing controllers. The result is a function that
+    gives the controlled system RHS, for a given control strategy and
+    control target. Integral control for PID controllers produces a
+    system that is not suitable for standard numerical methods, and
+    therefore requires a custom integrator. This should be avoided.
 
-        type : str
-            String describing which control strategy to apply.
-
-        target : function 
-            Function with signature target(t). Returns the target
-            vector at time t that the controller seeks to stabilise.
-
-        B_matrix : ndarray
-            Vector denoting which state variables the control action
-            acts on. Must contain the same number of elements as the
-            state vector.
-
-    Several variables are required in some contexts, and optional in
-    others. For PID controllers, the following must be set:
-
-        kp : float
-            Proportional feedback gain for a PID controller. Must be
-            set if proportional control is desired. Can be left unset
-            otherwise.
-
-        ki : float
-            Integral feedback gain for a PID controller. Must be set
-            if integral control is desired. Can be left unset
-            otherwise.
-
-        kd : float
-            Derivative feedback gain for a PID controller. Must be set
-            if derivative control is desired. Can be left unset
-            otherwise.
-
-        C_matrix: ndarray
-            Matrix mapping a system state to an observed output. Must
-            multiply with the system state vector to produce a scalar
-            value.
-
-    For state feedback control, with state of dimension n, all of the
-    following must be set:
-
-        gains : ndarray
-            Control gains. gain[i] represents the gain applied to the
-            i'th state variable. Must be exactly one gain per state
-            variable.
-
-    Integral control for PID controllers produces a system that is not
-    suitable for traditional numerical methods, and therefore requires
-    a custom integrator. This should be avoided.
-
+    Controlled systems are of the form
+        xdot = f(x) + C u(Bx, t)
+    for PID control. C decides which state variables the controller is
+    able to act on, and B decides how to map the system states to a
+    scalar value; the controller seeks to drive this scalar value to
+    match the control target.
     """
 
-    def __init__(self, **kw):
+    def __init__(self, controller_type, B_matrix, control_target, **kw):
+        """
+        Construct a controller class. Once constructed, controller
+        functions can be produced for a given control target, using
+        the get_controller function.
+
+            controller_type : str
+                String describing which control strategy to apply. Must be
+                one of {P, I, D, PI, PD, PID, ID, I, state}.
+
+            B_matrix : ndarray
+                Vector denoting which state variables the control action
+                acts on. Must contain the same number of elements as the
+                state vector.
+
+            control_target : function
+                Function of signature control_target(t). Returns the
+                appropriately dimensioned control target for the
+                system at time t.
+
+            **kw :
+                Any additional arguments for the chosen controller
+                type. Several variables are required in some contexts,
+                and optional in others. For PID controllers, the
+                following must be set:
+
+                    kp : float
+                        Proportional feedback gain for a PID
+                        controller. Must be set if proportional
+                        control is desired. Can be left unset
+                        otherwise.
+
+                    ki : float
+                        Integral feedback gain for a PID controller.
+                        Must be set if integral control is desired.
+                        Can be left unset otherwise.
+
+                    kd : float
+                        Derivative feedback gain for a PID controller.
+                        Must be set if derivative control is desired.
+                        Can be left unset otherwise.
+
+                    C_matrix: ndarray
+                        Matrix mapping a system state to an observed
+                        output. Must multiply with the system state
+                        vector to produce a scalar value; the
+                        controller then tries to make this scalar
+                        value track the control target.
+
+                For state feedback control, with state of dimension n, the
+                following must be set:
+
+                    gains : ndarray
+                        Control gains. gain[i] represents the gain
+                        applied to the i'th state variable. Must be
+                        exactly one gain per state variable.
+
+        For derivative control, the time derivative of the control
+        target can optionally be defined with the target_derivative
+        kwarg.
+        """
         self.__dict__ = kw
         PID_dict = {x: self._integral_controller for x in "I PI ID PID".split()}
         PD_dict = {x: self._derivative_controller for x in "P D PD".split()}
-        self._controller_types = {
+        controller_types = {
             "state": self._state_feedback_controller,
             **PID_dict,
             **PD_dict,
         }
+        if controller_type not in controller_types:
+            raise ValueError(
+                "{0} is not a valid controller type".format(controller_type)
+            )
+        self._controller_builder = controller_types[controller_type]
+        self.controller_type = controller_type
+        self.B_matrix = B_matrix
+        self.control_target = control_target
 
     def get_controller(self):
-        """Return a controller function.
-
-            Raises AttributeError if the controller type is not
-            specified
-
-            Raises ValueError if the requested controller type is not
-            valid
-
-        Returns a function u(x,t), which gives the applied control
-        action for state x, time t, using the control strategy
-        specified by self.type.
         """
-        if not "type" in self.__dict__:
-            raise AttributeError("Controller type not specified")
-        if not self.type in self._controller_types:
-            raise ValueError("{0} is not a valid controller type".format(self.type))
-        if not "B_matrix" in self.__dict__:
-            raise AttributeError("No B matrix defined")
-        return self._controller_types[self.type]()
+        Build a controller, given the controller parameters set at
+        init.
 
-    def _state_feedback_controller(self):
+        Returns a function rhs(x,t), which gives a system right-hand
+        side after applying the appropriate control action, for state
+        x, time t, using the control strategy specified at init.
+        """
+        return self._controller_builder(self.control_target)
+
+    def _state_feedback_controller(self, control_target):
         """Build a state feedback controller.
 
             Raises AttributeError if no controller gains have been
@@ -106,7 +124,7 @@ class Controller:
         control strategy.
         """
         # Check relevant variables exist
-        if not "gains" in self.__dict__:
+        if "gains" not in self.__dict__:
             raise AttributeError("No controller gains have been defined")
 
         # Force into correct shapes and check sizes match
@@ -146,53 +164,53 @@ class Controller:
                 raise ValueError(
                     "State vector, B matrix, and gains must contain the same number of elements"
                 )
-            error = state - self._control_target(t)
+            error = state - self._formatted_control_target(control_target, t)
             return state - B_matrix * np.dot(gains, error)
 
         return controlled_RHS
 
-    def _integral_controller(self):
-        # Existence and correctness of self.type is checked for in the calling function.
+    def _integral_controller(self, control_target):
         # Ensure all the gains have been defined
-        if "P" in self.type and not "kp" in self.__dict__:
+        if "P" in self.controller_type and "kp" not in self.__dict__:
             raise AttributeError("No proportional feedback gain set")
-        if "I" in self.type and not "ki" in self.__dict__:
+        if "I" in self.controller_type and "ki" not in self.__dict__:
             raise AttributeError("No integral feedback gain set")
-        if "D" in self.type and not "kd" in self.__dict__:
+        if "D" in self.controller_type and "kd" not in self.__dict__:
             raise AttributeError("No derivative feedback gain set")
-        if not "C_matrix" in self.__dict__:
+        if "C_matrix" not in self.__dict__:
             raise AttributeError("No C matrix defined")
-        kp = 0 if not "P" in self.type else self.kp
-        ki = 0 if not "I" in self.type else self.ki
-        kd = 0 if not "D" in self.type else self.kd
-        return _PID(kp, ki, kd, self.B_matrix, self.C_matrix, self._control_target)
+        kp = 0 if "P" not in self.controller_type else self.kp
+        ki = 0 if "I" not in self.controller_type else self.ki
+        kd = 0 if "D" not in self.controller_type else self.kd
+        return _PID(kp, ki, kd, self.B_matrix, self.C_matrix, control_target)
 
-    def _derivative_controller(self):
-        # Existence and correctness of B_matrix and self.type is
-        # checked for in the calling function. Ensure all the gains
-        # have been defined
-        if "P" in self.type and not "kp" in self.__dict__:
+    def _derivative_controller(self, control_target):
+        # Ensure all the gains have been defined
+        if "P" in self.controller_type and "kp" not in self.__dict__:
             raise AttributeError("No proportional feedback gain set")
-        if "D" in self.type and not "kd" in self.__dict__:
+        if "D" in self.controller_type and "kd" not in self.__dict__:
             raise AttributeError("No derivative feedback gain set")
-        if not "C_matrix" in self.__dict__:
+        if "C_matrix" not in self.__dict__:
             raise AttributeError("No C matrix defined")
-        kp = 0 if not "P" in self.type else self.kp
-        kd = 0 if not "D" in self.type else self.kd
+        kp = 0 if "P" not in self.controller_type else self.kp
+        kd = 0 if "D" not in self.controller_type else self.kd
 
         # See if we have the control target derivative
         # If not, construct it
         if "derivative" in self.__dict__:
             derivative = self.target_derivative
         else:
-            derivative = lambda t: scipy.misc.derivative(self._control_target, t)
+
+            def derivative(t):
+                return scipy.misc.derivative(control_target, t)
 
         B_matrix = np.array(self.B_matrix).reshape((-1, 1))
         # Remove to allow multidimensional u
         C_matrix = np.array(self.C_matrix).reshape((1, -1))
         # Construct the derivative controller
         BC_mat = np.dot(B_matrix, C_matrix)
-        derivative_control_mat = np.linalg.inv(np.eye(BC_mat.shape[0]) - kd * BC_mat)
+        derivative_control_mat = np.linalg.inv(
+            np.eye(BC_mat.shape[0]) - kd * BC_mat)
 
         def controlled_RHS(RHS, x, t):
             """Return function for giving the controlled system RHS,
@@ -227,66 +245,26 @@ class Controller:
                 )
             target_derivative = derivative(t)
             control_scalar = (
-                kp * (np.dot(C_matrix, state) - self._control_target(t))
+                kp
+                * (
+                    np.dot(C_matrix, state)
+                    - self._formatted_control_target(control_target, t)
+                )
                 - kd * target_derivative
             )
-            uncorrected_RHS = np.array(RHS).reshape((-1, 1)) + B_matrix * control_scalar
-            return np.dot(derivative_control_mat, uncorrected_RHS)
+            uncorrected_RHS = np.array(RHS).reshape(
+                (-1, 1)) + B_matrix * control_scalar
+            corrected_RHS = np.dot(derivative_control_mat, uncorrected_RHS)
+            return corrected_RHS
 
         return controlled_RHS
 
-    def _control_target(self, t):
+    def _formatted_control_target(self, control_target, t):
         """Evaluate the control target and reshape the result into a
         column vector.
 
-            t : float Time at which to evaluate the control target
-                function
-
-            Raises AttributeError if self.target has not been set
-
-            Passes up any exceptions from target and ndarray.reshape
-
         Returns the control target at time t, as defined by the
-        function `target'
+        function `control_target'
         """
         # Ensure control target has been defined
-        if not "target" in self.__dict__:
-            raise AttributeError("Control target not set")
-        return np.array(self.target(t)).reshape((-1, 1))
-
-    """
-    Some methods for dict-like interaction
-    """
-
-    def values(self):
-        return list(self.__dict__.values())
-
-    def keys(self):
-        return list(self.__dict__.keys())
-
-    def items(self):
-        return list(self.__dict__.items())
-
-    def itervalues(self):
-        return iter(self.__dict__.values())
-
-    def iterkeys(self):
-        return iter(self.__dict__.keys())
-
-    def iteritems(self):
-        return iter(self.__dict__.items())
-
-    def __getitem__(self, k):
-        return self.__dict__[k]
-
-    def __setitem__(self, k, v):
-        self.__dict__.__setitem__(k, v)
-
-    def get(self, k, d=None):
-        return self.__dict__.get(k, d)
-
-    def has_key(self, k):
-        return k in self.__dict__
-
-    def __contains__(self, v):
-        return self.__dict__.__contains__(v)
+        return np.array(control_target(t)).reshape((-1, 1))

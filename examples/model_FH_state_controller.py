@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-from model.modelclass import Model
-from model.controller import Controller
+from model import Model, Controller
 import matplotlib.pyplot as plt
 import math
 
@@ -19,11 +18,8 @@ def control_target(t):
 
 
 def main():
-    controller = Controller()
-    controller["type"] = "state"
-    controller["target"] = control_target
-    controller["gains"] = [1, 1]
-    controller["B_matrix"] = [1, 1]
+    B_matrix = [1, 1]
+    controller = Controller("state", B_matrix, control_target, gains=[1, 1])
 
     model = Model(fitzhugh_nagumo_neuron, ["I"], False, controller)
 
